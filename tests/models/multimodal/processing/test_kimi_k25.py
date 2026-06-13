@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from vllm.assets.video import VideoAsset
 from vllm.model_executor.models.kimi_k25 import (
     _format_video_timestamp,
     _frames_to_pil_images,
@@ -80,6 +81,28 @@ def test_split_video_chunks_uses_video_metadata_for_timestamps() -> None:
     assert len(chunks[0]["video_chunk"]) == 2
     assert chunks[0]["prompt"].startswith("00:00:00.000")
     assert chunks[1]["prompt"].startswith("00:00:02.000")
+
+
+def test_split_video_chunks_accepts_existing_video_asset() -> None:
+    video_asset = VideoAsset(name="baby_reading", num_frames=4)
+    metadata = dict(video_asset.metadata)
+    metadata["fps"] = 2.0
+    metadata["frames_indices"] = [0, 1, 2, 3]
+
+    chunks = _split_video_chunks(
+        (video_asset.np_ndarrays, metadata),
+        FakeImageProcessor(),
+    )
+
+    assert len(chunks) == 2
+    assert [chunk["type"] for chunk in chunks] == ["video_chunk", "video_chunk"]
+    assert chunks[0]["prompt"].startswith("00:00:00.000")
+    assert chunks[1]["prompt"].startswith("00:00:01.000")
+    assert all(
+        isinstance(frame, Image.Image)
+        for chunk in chunks
+        for frame in chunk["video_chunk"]
+    )
 
 
 def test_split_video_chunks_rejects_empty_frames() -> None:

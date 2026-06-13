@@ -292,6 +292,32 @@ def test_resolve_vision_chunk_video_preserves_optional_splitter_behavior():
 
 
 @pytest.mark.skip_global_cleanup
+def test_resolve_vision_chunk_video_preserves_single_chunk_uuid():
+    class RequiredVideoSplitter:
+        requires_video_chunk_splitting = True
+
+        def split_video_chunks(self, data: object) -> list[dict[str, Any]]:
+            return [{"video_chunk": ["frame"], "prompt": "prompt"}]
+
+    chunks, uuids = _resolve_vision_chunk_items(
+        [(("frames", {"fps": 30.0}), "video-uuid")],
+        cast(Any, RequiredVideoSplitter()),
+        ["video"],
+    )
+
+    assert chunks == [
+        {
+            "type": "video_chunk",
+            "video_chunk": ["frame"],
+            "uuid": "video-uuid",
+            "video_idx": 0,
+            "prompt": "prompt",
+        }
+    ]
+    assert uuids == ["video-uuid"]
+
+
+@pytest.mark.skip_global_cleanup
 def test_resolve_vision_chunk_video_required_splitter_fails_closed():
     class BrokenRequiredVideoSplitter:
         requires_video_chunk_splitting = True

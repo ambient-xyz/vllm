@@ -82,6 +82,13 @@ def test_split_video_chunks_uses_video_metadata_for_timestamps() -> None:
     assert chunks[1]["prompt"].startswith("00:00:02.000")
 
 
+def test_split_video_chunks_rejects_empty_frames() -> None:
+    frames = np.zeros((0, 2, 2, 3), dtype=np.uint8)
+
+    with pytest.raises(ValueError, match="decoded to zero frames"):
+        _split_video_chunks(frames, FakeImageProcessor())
+
+
 def test_split_video_chunks_rejects_invalid_metadata() -> None:
     frames = np.zeros((2, 2, 2, 3), dtype=np.uint8)
 

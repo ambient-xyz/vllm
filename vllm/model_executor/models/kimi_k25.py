@@ -90,20 +90,15 @@ def _format_video_timestamp(
 
 
 def _frames_to_pil_images(frames: object) -> list[Image.Image]:
-    if isinstance(frames, torch.Tensor):
-        frames = frames.detach().cpu().numpy()
-
     if isinstance(frames, np.ndarray):
         if frames.ndim != 4:
             raise ValueError(f"Kimi video frames must be 4D, got shape={frames.shape}")
-        if frames.shape[-1] not in (1, 3, 4) and frames.shape[1] in (1, 3, 4):
-            frames = np.transpose(frames, (0, 2, 3, 1))
         if frames.shape[-1] not in (1, 3, 4):
             raise ValueError(
                 f"Kimi video frames must have 1/3/4 channels, got shape={frames.shape}"
             )
         if frames.dtype != np.uint8:
-            frames = np.clip(frames, 0, 255).astype(np.uint8)
+            raise ValueError(f"Kimi video frames must be uint8, got {frames.dtype}")
 
         pil_frames: list[Image.Image] = []
         for frame in frames:
@@ -117,13 +112,13 @@ def _frames_to_pil_images(frames: object) -> list[Image.Image]:
         for frame in frames:
             if isinstance(frame, Image.Image):
                 pil_frames.append(frame.convert("RGB"))
-            elif isinstance(frame, torch.Tensor):
-                pil_frames.extend(_frames_to_pil_images(frame))
-            else:
+            elif isinstance(frame, np.ndarray):
                 frame_array = np.asarray(frame)
                 if frame_array.ndim == 3:
                     frame_array = frame_array[None, ...]
                 pil_frames.extend(_frames_to_pil_images(frame_array))
+            else:
+                raise ValueError(f"Unsupported Kimi video frame item: {type(frame)!r}")
         return pil_frames
 
     raise ValueError(f"Unsupported Kimi video frame container: {type(frames)!r}")

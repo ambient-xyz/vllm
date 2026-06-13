@@ -32,28 +32,33 @@ def test_format_video_timestamp() -> None:
         _format_video_timestamp(1, "seconds")
 
 
-def test_frames_to_pil_images_accepts_thwc_and_tchw() -> None:
-    thwc_frames = np.zeros((2, 5, 6, 3), dtype=np.uint8)
-    tchw_frames = np.zeros((2, 3, 5, 6), dtype=np.float32)
+def test_frames_to_pil_images_accepts_uint8_thwc() -> None:
+    thwc_frames = np.full((2, 5, 6, 3), 127, dtype=np.uint8)
 
     thwc_images = _frames_to_pil_images(thwc_frames)
-    tchw_images = _frames_to_pil_images(tchw_frames)
 
     assert len(thwc_images) == 2
-    assert len(tchw_images) == 2
-    assert all(image.mode == "RGB" for image in thwc_images + tchw_images)
+    assert all(image.mode == "RGB" for image in thwc_images)
     assert thwc_images[0].size == (6, 5)
-    assert tchw_images[0].size == (6, 5)
+    assert thwc_images[0].getpixel((0, 0)) == (127, 127, 127)
 
 
-def test_frames_to_pil_images_accepts_pil_list() -> None:
+def test_frames_to_pil_images_accepts_frame_lists() -> None:
     image = Image.new("RGBA", (2, 3))
+    frame = np.full((3, 2, 3), 255, dtype=np.uint8)
 
-    images = _frames_to_pil_images([image])
+    images = _frames_to_pil_images([image, frame])
 
-    assert len(images) == 1
-    assert images[0].mode == "RGB"
+    assert len(images) == 2
+    assert all(image.mode == "RGB" for image in images)
     assert images[0].size == (2, 3)
+    assert images[1].size == (2, 3)
+    assert images[1].getpixel((0, 0)) == (255, 255, 255)
+
+
+def test_frames_to_pil_images_rejects_unexpected_frame_dtype() -> None:
+    with pytest.raises(ValueError, match="must be uint8"):
+        _frames_to_pil_images(np.ones((1, 2, 2, 3), dtype=np.float32))
 
 
 def test_split_video_chunks_uses_video_metadata_for_timestamps() -> None:
